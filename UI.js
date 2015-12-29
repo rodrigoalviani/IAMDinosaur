@@ -1,18 +1,12 @@
-/*
-	Developed by Ivan Seidel [https://github.com/ivanseidel]
-*/
+'use strict';
 
-var fs = require('fs');
-var blessed = require('blessed')
-var contrib = require('blessed-contrib')
-var screen = blessed.screen()
+var fs = require('fs'),
+blessed = require('blessed'),
+  contrib = require('blessed-contrib'),
+  screen = blessed.screen(),
+  UI = {};
 
-var UI = {};
-
-
-//
 // Initialize UI objects
-//
 UI.init = function (gameManipulator, learner) {
 	UI.gm = gameManipulator;
 	UI.learner = learner;
@@ -23,9 +17,7 @@ UI.init = function (gameManipulator, learner) {
 		screen: screen
 	});
 
-	//
 	// Build Sensor inputs
-	//
 	UI.uiSensors = UI.grid.set(0, 0, 3, 6, contrib.bar, {
 		label: 'Network Inputs',
 		// bg: 'white',
@@ -35,18 +27,14 @@ UI.init = function (gameManipulator, learner) {
 		maxHeight: 100,
 	});
 
-	//
 	// Build Log box
-	//
 	UI.logger = UI.grid.set(3, 0, 3, 6, contrib.log, {
 		fg: 'green',
 		selectedFg: 'green',
 		label: 'Logs'
 	});
 
-	//
 	// Current score/time view
-	//
 	UI.uiScore = UI.grid.set(6, 0, 3, 3, blessed.Text, {
 		label: 'Game Stats',
 		// bg: 'green',
@@ -55,9 +43,7 @@ UI.init = function (gameManipulator, learner) {
 		align: 'center',
 	});
 
-	//
 	// Current Genomes stats
-	//
 	UI.uiGenomes = UI.grid.set(6, 3, 3, 3, blessed.Text, {
 		label: 'Genome Stats',
 		// bg: 'green',
@@ -66,36 +52,30 @@ UI.init = function (gameManipulator, learner) {
 		align: 'center',
 	});
 
-
-	//
 	// Load Tree
-	//
 	UI.savesTree = UI.grid.set(9, 0, 3, 3, contrib.tree, {
 		label: 'Saved Genomes',
 	});
 
 	UI.savesTree.on('click', UI.savesTree.focus.bind(UI.savesTree));
-	UI.savesTree.on('select', function (item){
-
-		if(item.isFile){
+	UI.savesTree.on('select', function (item) {
+		if (item.isFile) {
 			var fileName = item.name;
 
 			UI.logger.log('Loading genomes from file:');
 			UI.logger.log(fileName);
 
-			var genomes = require('./genomes/'+fileName);
+			var genomes = require('./genomes/' + fileName);
 
 			UI.learner.loadGenomes(genomes);
-		}else{
+		} else {
 			UI.refreshFiles();
 		}
 	});
 
 	UI.refreshFiles();
 
-	//
 	// Save Btn
-	//
 	UI.btnSave = UI.grid.set(9, 3, 3, 3, blessed.box, {
 		label: 'Save to File',
 		bg: 'green',
@@ -104,54 +84,47 @@ UI.init = function (gameManipulator, learner) {
 		align: 'center',
 	});
 
-	UI.btnSave.on('click', function (){
-
+	UI.btnSave.on('click', function () {
 		var jsonGenomes = [];
-		for(var k in UI.learner.genomes){
+		for (var k in UI.learner.genomes) {
 			jsonGenomes.push(UI.learner.genomes[k].toJSON());
 		}
 
-		UI.logger.log('Saving '+jsonGenomes.length+' genomes...');
+		UI.logger.log('Saving ' + jsonGenomes.length + ' genomes...');
 
-		var fileName = './genomes/gen_'+UI.learner.generation+'_'+Date.now()+'.json';
-		fs.writeFile(fileName, JSON.stringify(jsonGenomes), function (err){
-			if(err)
-				UI.logger.log('Failed to save! '+err);
-			else
-				UI.logger.log('Saved to '+fileName);
+		var fileName = './genomes/gen_' + UI.learner.generation + '_' + Date.now() + '.json';
+		fs.writeFile(fileName, JSON.stringify(jsonGenomes), function (err) {
+			if (err) {
+        UI.logger.log('Failed to save! ' + err);
+			} else {
+				UI.logger.log('Saved to ' + fileName);
+      }
 
 			UI.refreshFiles();
 		});
-
 	});
 
-	screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+	screen.key(['escape', 'q', 'C-c'], function (ch, key) {
 	 return process.exit(0);
 	});
 
-	screen.key(['s'], function (ch, key){
-		if(learner.state == 'STOP'){
+	screen.key(['s'], function (ch, key) {
+		if (learner.state == 'STOP') {
 			learner.state = 'LEARNING';
 			gameManipulator.focusGame();
 			learner.startLearning();
-		}else{
+		} else {
 			learner.state = 'STOP';
 		}
 	});
 
-
-	screen.render()
-
+	screen.render();
 };
 
-
-//
 // Read entire folder and select files that match a .json file
-//
-UI.refreshFiles = function (){
+UI.refreshFiles = function () {
 	var files = [];
-	var fileData =
-	{
+	var fileData = {
 		name: 'Saved Files',
 		extended: true,
 		children: [{
@@ -160,10 +133,10 @@ UI.refreshFiles = function (){
 	};
 
 	// Populate tree
-	UI.logger.log('Reading genomes dir...')
+	UI.logger.log('Reading genomes dir...');
 	var files = fs.readdirSync('./genomes');
-	for(var k in files){
-		if(files[k].indexOf('.json') >= 0){
+	for (var k in files) {
+		if (files[k].indexOf('.json') >= 0) {
 			fileData.children.push({
 				name: files[k],
 				isFile: true,
@@ -172,16 +145,11 @@ UI.refreshFiles = function (){
 	}
 
 	UI.savesTree.setData(fileData);
-}
+};
 
-//
 // Updates data on the screen and render it
-//
 UI.render = function () {
-
-	//
 	// Update data
-	//
 	UI.uiSensors.setData({
 		titles: ['Distance', 'Size', 'Speed', 'Activation'],
 		data: [
@@ -190,29 +158,25 @@ UI.render = function () {
 			Math.round(UI.gm.sensors[0].speed * 100),
 			Math.round(UI.gm.gameOutput * 100),
 		]
-	})
+	});
 
-	//
 	// Set Genome stats and score
-	//
 	var learn = UI.learner;
-	var uiStats = 'Status: '+learn.state+'\n';
-	uiStats += 'Fitness: '+UI.gm.points+'\nGameStatus: '+UI.gm.gamestate + '\n';
-	uiStats += 'Generation: '+learn.generation+' : '+learn.genome+'/'+learn.genomes.length;
+	var uiStats = 'Status: ' + learn.state + '\n';
+	uiStats += 'Fitness: ' + UI.gm.points + '\nGameStatus: ' + UI.gm.gamestate + '\n';
+	uiStats += 'Generation: ' + learn.generation + ' : ' + learn.genome + '/' + learn.genomes.length;
 	UI.uiScore.setText(uiStats);
 
-	if(UI.gm.gameOutput){
-		var str = 'Action: '+UI.gm.gameOutputString+'\nActivation: '+UI.gm.gameOutput;
+	if (UI.gm.gameOutput) {
+		var str = 'Action: ' + UI.gm.gameOutputString + '\nActivation: ' + UI.gm.gameOutput;
 		UI.uiGenomes.setText(str);
-	}else{
+	} else {
 		UI.uiGenomes.setText('Loading...');
 	}
 
-	//
 	// Render screen
-	//
 	screen.render();
-}
+};
 
 setInterval(UI.render, 25);
 
